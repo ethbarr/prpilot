@@ -1,0 +1,155 @@
+import { ReviewResult, ReviewComment, Severity } from '../types';
+
+const PANEL_ID = 'prpilot-panel';
+const BUTTON_ID = 'prpilot-btn';
+
+const SEVERITY_COLORS: Record<Severity, string> = {
+  high: '#d73a49',
+  medium: '#e36209',
+  low: '#6f42c1',
+  info: '#0366d6',
+};
+
+const SCORE_COLORS = (score: number): string => {
+  if (score >= 8) return '#28a745';
+  if (score >= 5) return '#e36209';
+  return '#d73a49';
+};
+
+function formatComment(comment: ReviewComment): string {
+  const color = SEVERITY_COLORS[comment.severity];
+  const fileTag = comment.file
+    ? `<span style="font-family:monospace;font-size:11px;background:#f1f3f4;padding:1px 4px;border-radius:3px;">${comment.file}</span> `
+    : '';
+  const typeLabel = comment.type === 'issue' ? '⚠️' : comment.type === 'praise' ? '✅' : '💡';
+  return `
+    <div style="padding:10px 0;border-bottom:1px solid #e1e4e8;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span>${typeLabel}</span>
+        ${fileTag}
+        <span style="font-size:11px;color:${color};font-weight:600;text-transform:uppercase;">${comment.severity}</span>
+      </div>
+      <p style="margin:0;font-size:13px;color:#24292e;line-height:1.5;">${comment.message}</p>
+    </div>`;
+}
+
+/**
+ * Injects the "AI Review" button into the GitHub PR page toolbar.
+ */
+export function injectReviewButton(onClick: () => void): void {
+  if (document.getElementById(BUTTON_ID)) return;
+
+  const btn = document.createElement('button');
+  btn.id = BUTTON_ID;
+  btn.textContent = '🤖 AI Review';
+  btn.style.cssText = `
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    z-index: 9999;
+    background: #0366d6;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  `;
+  btn.addEventListener('click', onClick);
+  document.body.appendChild(btn);
+}
+
+/**
+ * Shows a loading state in the review panel.
+ */
+export function showLoadingPanel(): void {
+  const panel = getOrCreatePanel();
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;height:120px;flex-direction:column;gap:12px;">
+      <div style="width:28px;height:28px;border:3px solid #e1e4e8;border-top-color:#0366d6;border-radius:50%;animation:prpilot-spin 0.8s linear infinite;"></div>
+      <p style="color:#586069;font-size:13px;margin:0;">Reviewing with AI…</p>
+    </div>
+    <style>
+      @keyframes prpilot-spin { to { transform: rotate(360deg); } }
+    </style>`;
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
+}
+
+/**
+ * Renders a completed review result in the panel.
+ */
+export function showReviewPanel(result: ReviewResult): void {
+  const panel = getOrCreatePanel();
+  const scoreColor = SCORE_COLORS(result.overallScore);
+  const commentsHtml = result.comments.map(formatComment).join('');
+
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h2 style="margin:0;font-size:16px;font-weight:600;color:#24292e;">PRPilot Review</h2>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:20px;font-weight:700;color:${scoreColor};">${result.overallScore}/10</span>
+        <button id="prpilot-close" style="background:none;border:none;cursor:pointer;font-size:18px;color:#586069;">✕</button>
+      </div>
+    </div>
+    <p style="font-size:13px;color:#24292e;line-height:1.6;margin:0 0 16px;padding-bottom:16px;border-bottom:1px solid #e1e4e8;">${result.summary}</p>
+    <div>${commentsHtml || '<p style="color:#586069;font-size:13px;">No specific issues found.</p>'}</div>
+  `;
+
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
+
+  document.getElementById('prpilot-close')?.addEventListener('click', hidePanel);
+}
+
+/**
+ * Shows an error message in the panel.
+ */
+export function showErrorPanel(message: string): void {
+  const panel = getOrCreatePanel();
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h2 style="margin:0;font-size:16px;font-weight:600;color:#d73a49;">Review Failed</h2>
+      <button id="prpilot-close" style="background:none;border:none;cursor:pointer;font-size:18px;color:#586069;">✕</button>
+    </div>
+    <p style="font-size:13px;color:#586069;line-height:1.5;">${message}</p>
+    <p style="font-size:12px;color:#959da5;margin-top:8px;">Check your API key in the PRPilot extension settings.</p>
+  `;
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
+  document.getElementById('prpilot-close')?.addEventListener('click', hidePanel);
+}
+
+function hidePanel(): void {
+  const panel = document.getElementById(PANEL_ID);
+  if (panel) panel.style.display = 'none';
+}
+
+function getOrCreatePanel(): HTMLElement {
+  let panel = document.getElementById(PANEL_ID);
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = PANEL_ID;
+    panel.style.cssText = `
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      width: 380px;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+      background: #fff;
+      border: 1px solid #e1e4e8;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(149,157,165,0.3);
+      padding: 20px;
+      z-index: 9998;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      box-sizing: border-box;
+    `;
+    document.body.appendChild(panel);
+  }
+  return panel;
+}
