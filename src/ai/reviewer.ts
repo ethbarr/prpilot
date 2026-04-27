@@ -30,6 +30,7 @@ async function callAnthropic(prompt: string, settings: Settings): Promise<string
     headers: {
       'x-api-key': settings.apiKey,
       'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
       'content-type': 'application/json',
     },
     body: JSON.stringify({
@@ -40,8 +41,11 @@ async function callAnthropic(prompt: string, settings: Settings): Promise<string
   });
 
   if (!response.ok) {
+    // Include response body in error for easier debugging
+    let detail = '';
+    try { detail = JSON.stringify(await response.json()); } catch { /* ignore */ }
     throw new Error(
-      `Anthropic API error: ${response.status} ${response.statusText}`
+      `Anthropic API error: ${response.status} ${response.statusText}${detail ? ` — ${detail}` : ''}`
     );
   }
 

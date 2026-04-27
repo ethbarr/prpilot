@@ -4,8 +4,8 @@
   "description": "AI-powered GitHub PR reviewer Chrome extension",
   "private": true,
   "scripts": {
-    "dev": "vite build --watch",
-    "build": "vite build",
+    "dev": "node build.mjs",
+    "build": "node build.mjs",
     "test": "jest",
     "test:coverage": "jest --coverage"
   },

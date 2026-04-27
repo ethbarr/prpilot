@@ -1,20 +1,23 @@
-import { getSettings } from '../adapters/storage';
+import { getSettings, saveSettings } from '../adapters/storage';
 import { parsePRUrl, isPRUrl } from '../github/prDetector';
 import { fetchPRDiff } from '../github/diffExtractor';
-import { reviewPR } from '../ai/reviewer';
-import { injectReviewButton, showLoadingPanel, showReviewPanel, showErrorPanel } from './ui';
+import { injectReviewButton, showLoadingPanel, addLoadingStep, showReviewPanel, showErrorPanel, showSetupPanel } from './ui';
+import { DEFAULT_SETTINGS, ReviewResult } from '../types';
 
 async function handleReviewClick(): Promise<void> {
-  showLoadingPanel();
-
   const settings = await getSettings();
 
+  // No API key → show inline setup instead of a dead-end error
   if (!settings.apiKey) {
-    showErrorPanel(
-      'No API key configured. Click the PRPilot extension icon in your toolbar to add your Anthropic or OpenAI API key.'
-    );
+    showSetupPanel(async (apiKey: string, provider: string) => {
+      const model = provider === 'anthropic' ? DEFAULT_SETTINGS.model : 'gpt-4o';
+      await saveSettings({ ...settings, apiKey, apiProvider: provider as 'anthropic' | 'openai', model });
+      handleReviewClick();
+    });
     return;
   }
+
+  showLoadingPanel();
 
   const prInfo = parsePRUrl(window.location.href);
   if (!prInfo) {
@@ -35,8 +38,34 @@ async function handleReviewClick(): Promise<void> {
       return;
     }
 
-    const result = await reviewPR(files, settings);
-    showReviewPanel(result);
+    addLoadingStep(`Fetched ${files.length} changed file${files.length !== 1 ? 's' : ''}`);
+    addLoadingStep(`Sending to ${settings.apiProvider === 'anthropic' ? 'Claude' : 'GPT'} for review…`);
+
+    // Send diff to background service worker for the API call.
+    // The SW runs outside the page context so GitHub's CSP doesn't block it.
+    const response = await chrome.runtime.sendMessage({
+      type: 'REVIEW_PR',
+      files,
+      settings,
+    }) as { ok: boolean; result?: ReviewResult; error?: string };
+
+    addLoadingStep('Response received — parsing review…');
+
+    if (!response.ok) {
+      const msg = response.error ?? 'Background worker returned an error.';
+      // 401 means the saved key is wrong — re-show setup so they can fix it
+      if (msg.includes('401')) {
+        showSetupPanel(async (apiKey: string, provider: string) => {
+          const model = provider === 'anthropic' ? DEFAULT_SETTINGS.model : 'gpt-4o';
+          await saveSettings({ ...settings, apiKey, apiProvider: provider as 'anthropic' | 'openai', model });
+          handleReviewClick();
+        }, true /* invalidKey */);
+      } else {
+        showErrorPanel(msg);
+      }
+      return;
+    }
+    showReviewPanel(response.result!);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
     showErrorPanel(message);
