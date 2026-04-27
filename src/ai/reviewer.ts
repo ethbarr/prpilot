@@ -30,8 +30,11 @@ async function callAnthropic(prompt: string, settings: Settings): Promise<string
     headers: {
       'x-api-key': settings.apiKey,
       'anthropic-version': '2023-06-01',
-      // Required for any browser-context call (including service workers).
-      // Without it Anthropic rejects the request regardless of key validity.
+      // Required for any browser-context API call (page scripts and service
+      // workers alike). Without it Anthropic rejects the request.
+      // Trade-off: the API key is necessarily visible inside the extension's
+      // service worker bundle. This is an accepted, documented risk for a
+      // developer-facing tool where the user supplies their own key.
       'anthropic-dangerous-direct-browser-access': 'true',
       'content-type': 'application/json',
     },

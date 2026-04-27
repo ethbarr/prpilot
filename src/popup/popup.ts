@@ -48,25 +48,25 @@ providerEl.addEventListener('change', () => {
 });
 
 saveBtn.addEventListener('click', async () => {
-  const key = apiKeyEl.value.trim();
-  if (!key) {
-    showStatus('Please enter an API key.', 'error');
-    return;
-  }
-
-  // Preserve fields not exposed in the UI (maxFilesPerReview, maxPatchCharsPerFile)
-  // so saving from the popup never silently resets them to hardcoded defaults.
-  const existing = await getSettings();
-  const settings: Settings = {
-    ...existing,
-    apiKey: key,
-    apiProvider: providerEl.value as ApiProvider,
-    model: modelEl.value,
-    reviewStyle: reviewStyleEl.value as Settings['reviewStyle'],
-    githubToken: githubTokenEl.value.trim() || undefined,
-  };
-
   try {
+    const key = apiKeyEl.value.trim();
+    if (!key) {
+      showStatus('Please enter an API key.', 'error');
+      return;
+    }
+
+    // Preserve fields not exposed in the UI (maxFilesPerReview, maxPatchCharsPerFile)
+    // so saving from the popup never silently resets them to hardcoded defaults.
+    const existing = await getSettings();
+    const settings: Settings = {
+      ...existing,
+      apiKey: key,
+      apiProvider: providerEl.value as ApiProvider,
+      model: modelEl.value,
+      reviewStyle: reviewStyleEl.value as Settings['reviewStyle'],
+      githubToken: githubTokenEl.value.trim() || undefined,
+    };
+
     await saveSettings(settings);
     showStatus('Settings saved!', 'success');
   } catch {

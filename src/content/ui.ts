@@ -1,17 +1,8 @@
 import { ReviewResult, ReviewComment, Severity } from '../types';
+import { escapeHtml } from '../utils/html';
 
 const PANEL_ID = 'prpilot-panel';
 const BUTTON_ID = 'prpilot-btn';
-
-/** Escapes user/AI-supplied text before inserting into innerHTML. */
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 const SEVERITY_COLORS: Record<Severity, string> = {
   high: '#d73a49',

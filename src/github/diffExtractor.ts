@@ -24,10 +24,13 @@ export async function fetchPRDiff(
 
   // GitHub's default page size is 30; use 100 (the max) and paginate so we
   // never silently miss files on PRs with more than 30 changed files.
+  // Cap at 30 pages (3 000 files) to guard against infinite loops from a
+  // pathological or adversarial API response that always returns a full page.
+  const MAX_PAGES = 30;
   const allFiles: DiffFile[] = [];
   let page = 1;
 
-  while (true) {
+  while (page <= MAX_PAGES) {
     const url =
       `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}/files` +
       `?per_page=100&page=${page}`;
@@ -41,7 +44,15 @@ export async function fetchPRDiff(
       );
     }
 
-    const data: any[] = await response.json();
+    const data: unknown = await response.json();
+
+    // Guard against unexpected non-array responses (e.g. a rate-limit error
+    // body that slipped past the !response.ok check with a 200 status).
+    if (!Array.isArray(data)) {
+      throw new Error(
+        `GitHub API returned an unexpected response shape on page ${page}.`
+      );
+    }
 
     for (const file of data) {
       allFiles.push({
