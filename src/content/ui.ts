@@ -323,10 +323,10 @@ function getOrCreatePanel(): HTMLElement {
     panel.id = PANEL_ID;
     panel.style.cssText = `
       position: fixed;
-      top: 80px;
+      top: 124px;
       right: 20px;
       width: 380px;
-      max-height: calc(100vh - 100px);
+      max-height: calc(100vh - 144px);
       overflow-y: auto;
       background: #fff;
       border: 1px solid #e1e4e8;
