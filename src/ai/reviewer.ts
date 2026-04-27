@@ -30,6 +30,9 @@ async function callAnthropic(prompt: string, settings: Settings): Promise<string
     headers: {
       'x-api-key': settings.apiKey,
       'anthropic-version': '2023-06-01',
+      // Required for any browser-context call (including service workers).
+      // Without it Anthropic rejects the request regardless of key validity.
+      'anthropic-dangerous-direct-browser-access': 'true',
       'content-type': 'application/json',
     },
     body: JSON.stringify({
