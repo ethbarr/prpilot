@@ -1,4 +1,5 @@
 import { ReviewResult, ReviewComment, Severity } from '../types';
+import { escapeHtml } from '../utils/html';
 
 const PANEL_ID = 'prpilot-panel';
 const BUTTON_ID = 'prpilot-btn';
@@ -38,7 +39,7 @@ function clearLogTimers(): void {
 function formatComment(comment: ReviewComment): string {
   const color = SEVERITY_COLORS[comment.severity];
   const fileTag = comment.file
-    ? `<span style="font-family:monospace;font-size:11px;background:#f1f3f4;padding:1px 4px;border-radius:3px;">${comment.file}</span> `
+    ? `<span style="font-family:monospace;font-size:11px;background:#f1f3f4;padding:1px 4px;border-radius:3px;">${escapeHtml(comment.file)}</span> `
     : '';
   const typeLabel = comment.type === 'issue' ? '⚠️' : comment.type === 'praise' ? '✅' : '💡';
   return `
@@ -46,9 +47,9 @@ function formatComment(comment: ReviewComment): string {
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
         <span>${typeLabel}</span>
         ${fileTag}
-        <span style="font-size:11px;color:${color};font-weight:600;text-transform:uppercase;">${comment.severity}</span>
+        <span style="font-size:11px;color:${color};font-weight:600;text-transform:uppercase;">${escapeHtml(comment.severity)}</span>
       </div>
-      <p style="margin:0;font-size:13px;color:#24292e;line-height:1.5;">${comment.message}</p>
+      <p style="margin:0;font-size:13px;color:#24292e;line-height:1.5;">${escapeHtml(comment.message)}</p>
     </div>`;
 }
 
@@ -186,7 +187,7 @@ export function showReviewPanel(result: ReviewResult): void {
         <button id="prpilot-close" style="background:none;border:none;cursor:pointer;font-size:18px;color:#586069;">✕</button>
       </div>
     </div>
-    <p style="font-size:13px;color:#24292e;line-height:1.6;margin:0 0 16px;padding-bottom:16px;border-bottom:1px solid #e1e4e8;">${result.summary}</p>
+    <p style="font-size:13px;color:#24292e;line-height:1.6;margin:0 0 16px;padding-bottom:16px;border-bottom:1px solid #e1e4e8;">${escapeHtml(result.summary)}</p>
     <div>${commentsHtml || '<p style="color:#586069;font-size:13px;">No specific issues found.</p>'}</div>
   `;
 
@@ -231,7 +232,7 @@ export function showErrorPanel(message: string): void {
       <h2 style="margin:0;font-size:16px;font-weight:600;color:#d73a49;">Review Failed</h2>
       <button id="prpilot-close" style="background:none;border:none;cursor:pointer;font-size:18px;color:#586069;">✕</button>
     </div>
-    <p style="font-size:13px;color:#586069;line-height:1.5;">${message}</p>
+    <p style="font-size:13px;color:#586069;line-height:1.5;">${escapeHtml(message)}</p>
     <p style="font-size:12px;color:#959da5;margin-top:8px;">Check your API key in the PRPilot extension settings.</p>
   `;
   panel.style.display = 'flex';
@@ -323,10 +324,10 @@ function getOrCreatePanel(): HTMLElement {
     panel.id = PANEL_ID;
     panel.style.cssText = `
       position: fixed;
-      top: 80px;
+      top: 124px;
       right: 20px;
       width: 380px;
-      max-height: calc(100vh - 100px);
+      max-height: calc(100vh - 144px);
       overflow-y: auto;
       background: #fff;
       border: 1px solid #e1e4e8;

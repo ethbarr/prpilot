@@ -30,11 +30,17 @@ async function callAnthropic(prompt: string, settings: Settings): Promise<string
     headers: {
       'x-api-key': settings.apiKey,
       'anthropic-version': '2023-06-01',
+      // Required for any browser-context API call (page scripts and service
+      // workers alike). Without it Anthropic rejects the request.
+      // Trade-off: the API key is necessarily visible inside the extension's
+      // service worker bundle. This is an accepted, documented risk for a
+      // developer-facing tool where the user supplies their own key.
+      'anthropic-dangerous-direct-browser-access': 'true',
       'content-type': 'application/json',
     },
     body: JSON.stringify({
       model: settings.model,
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -62,7 +68,7 @@ async function callOpenAI(prompt: string, settings: Settings): Promise<string> {
     body: JSON.stringify({
       model: settings.model,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 2048,
+      max_tokens: 4096,
     }),
   });
 

@@ -13,8 +13,6 @@ export async function fetchPRDiff(
   prNumber: number,
   githubToken?: string
 ): Promise<DiffFile[]> {
-  const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}/files`;
-
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
@@ -24,24 +22,54 @@ export async function fetchPRDiff(
     headers['Authorization'] = `Bearer ${githubToken}`;
   }
 
-  const response = await fetch(url, { headers });
+  // GitHub's default page size is 30; use 100 (the max) and paginate so we
+  // never silently miss files on PRs with more than 30 changed files.
+  // Cap at 30 pages (3 000 files) to guard against infinite loops from a
+  // pathological or adversarial API response that always returns a full page.
+  const MAX_PAGES = 30;
+  const allFiles: DiffFile[] = [];
+  let page = 1;
 
-  if (!response.ok) {
-    throw new Error(
-      `GitHub API error: ${response.status} ${response.statusText} — ` +
-        `check your GitHub token or repo visibility.`
-    );
+  while (page <= MAX_PAGES) {
+    const url =
+      `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}/files` +
+      `?per_page=100&page=${page}`;
+
+    const response = await fetch(url, { headers });
+
+    if (!response.ok) {
+      throw new Error(
+        `GitHub API error: ${response.status} ${response.statusText} — ` +
+          `check your GitHub token or repo visibility.`
+      );
+    }
+
+    const data: unknown = await response.json();
+
+    // Guard against unexpected non-array responses (e.g. a rate-limit error
+    // body that slipped past the !response.ok check with a 200 status).
+    if (!Array.isArray(data)) {
+      throw new Error(
+        `GitHub API returned an unexpected response shape on page ${page}.`
+      );
+    }
+
+    for (const file of data) {
+      allFiles.push({
+        filename: file.filename,
+        status: file.status,
+        additions: file.additions,
+        deletions: file.deletions,
+        ...(file.patch !== undefined ? { patch: file.patch } : {}),
+      });
+    }
+
+    // GitHub returns fewer than per_page items on the last page.
+    if (data.length < 100) break;
+    page++;
   }
 
-  const data = await response.json();
-
-  return data.map((file: any): DiffFile => ({
-    filename: file.filename,
-    status: file.status,
-    additions: file.additions,
-    deletions: file.deletions,
-    ...(file.patch !== undefined ? { patch: file.patch } : {}),
-  }));
+  return allFiles;
 }
 
 /**
