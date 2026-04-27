@@ -54,14 +54,16 @@ saveBtn.addEventListener('click', async () => {
     return;
   }
 
+  // Preserve fields not exposed in the UI (maxFilesPerReview, maxPatchCharsPerFile)
+  // so saving from the popup never silently resets them to hardcoded defaults.
+  const existing = await getSettings();
   const settings: Settings = {
+    ...existing,
     apiKey: key,
     apiProvider: providerEl.value as ApiProvider,
     model: modelEl.value,
     reviewStyle: reviewStyleEl.value as Settings['reviewStyle'],
     githubToken: githubTokenEl.value.trim() || undefined,
-    maxFilesPerReview: 20,
-    maxPatchCharsPerFile: 3000,
   };
 
   try {

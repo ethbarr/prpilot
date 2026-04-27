@@ -37,7 +37,7 @@ async function callAnthropic(prompt: string, settings: Settings): Promise<string
     },
     body: JSON.stringify({
       model: settings.model,
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
@@ -65,7 +65,7 @@ async function callOpenAI(prompt: string, settings: Settings): Promise<string> {
     body: JSON.stringify({
       model: settings.model,
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 2048,
+      max_tokens: 4096,
     }),
   });
 
