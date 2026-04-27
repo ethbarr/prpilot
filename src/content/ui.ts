@@ -16,17 +16,23 @@ const SCORE_COLORS = (score: number): string => {
   return '#d73a49';
 };
 
-// Track the log element and pending auto-step timers so we can
-// clear them when the panel transitions to a new state.
-let _logEl: HTMLElement | null = null;
-let _logTimers: ReturnType<typeof setTimeout>[] = [];
-// Track copy-button reset timer to avoid stale-closure mutations (#3 from review).
-let _copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * All transient panel state is grouped here to avoid scattered module-level
+ * mutables and to make double-invocation bugs easier to spot at a glance.
+ */
+const panelState = {
+  /** Reference to the live log <div> inside the loading panel. */
+  logEl: null as HTMLElement | null,
+  /** IDs of pending setTimeout calls that append auto-progress messages. */
+  logTimers: [] as ReturnType<typeof setTimeout>[],
+  /** ID of the pending copy-button label reset timer. */
+  copyResetTimer: null as ReturnType<typeof setTimeout> | null,
+};
 
 function clearLogTimers(): void {
-  _logTimers.forEach(clearTimeout);
-  _logTimers = [];
-  _logEl = null;
+  panelState.logTimers.forEach(clearTimeout);
+  panelState.logTimers = [];
+  panelState.logEl = null;
 }
 
 function formatComment(comment: ReviewComment): string {
@@ -104,7 +110,7 @@ export function showLoadingPanel(): void {
 
   panel.style.display = 'flex';
   panel.style.flexDirection = 'column';
-  _logEl = panel.querySelector('#prpilot-log');
+  panelState.logEl = panel.querySelector('#prpilot-log');
 
   // Auto-timed fallback messages for when real steps are slow.
   const autoSteps: [number, string][] = [
@@ -115,9 +121,9 @@ export function showLoadingPanel(): void {
   ];
   autoSteps.forEach(([delay, msg]) => {
     const t = setTimeout(() => {
-      if (_logEl) appendLogLine(msg, '#959da5');
+      if (panelState.logEl) appendLogLine(msg, '#959da5');
     }, delay);
-    _logTimers.push(t);
+    panelState.logTimers.push(t);
   });
 }
 
@@ -126,17 +132,17 @@ export function showLoadingPanel(): void {
  * at real transition points (diff fetched, files counted, etc.).
  */
 export function addLoadingStep(message: string): void {
-  if (!_logEl) return;
+  if (!panelState.logEl) return;
   appendLogLine(`✓ ${message}`, '#28a745');
 }
 
 function appendLogLine(text: string, color: string): void {
-  if (!_logEl) return;
+  if (!panelState.logEl) return;
   const line = document.createElement('div');
   line.textContent = text;
   line.style.cssText = `color:${color};animation:prpilot-fadein 0.25s ease;`;
-  _logEl.appendChild(line);
-  _logEl.scrollTop = _logEl.scrollHeight;
+  panelState.logEl.appendChild(line);
+  panelState.logEl.scrollTop = panelState.logEl.scrollHeight;
 }
 
 /**
@@ -165,7 +171,7 @@ export function formatReviewAsText(result: ReviewResult): string {
  */
 export function showReviewPanel(result: ReviewResult): void {
   clearLogTimers();
-  if (_copyResetTimer) { clearTimeout(_copyResetTimer); _copyResetTimer = null; }
+  if (panelState.copyResetTimer) { clearTimeout(panelState.copyResetTimer); panelState.copyResetTimer = null; }
 
   const panel = getOrCreatePanel();
   const scoreColor = SCORE_COLORS(result.overallScore);
@@ -195,22 +201,20 @@ export function showReviewPanel(result: ReviewResult): void {
       // Guard: clipboard API requires a secure context and may be undefined (#2 from review).
       if (!navigator.clipboard) {
         copyBtn.textContent = 'N/A';
-        _copyResetTimer = setTimeout(() => { copyBtn.textContent = 'Copy'; _copyResetTimer = null; }, 2000);
+        panelState.copyResetTimer = setTimeout(() => { copyBtn.textContent = 'Copy'; panelState.copyResetTimer = null; }, 2000);
         return;
       }
       navigator.clipboard.writeText(formatReviewAsText(result))
         .then(() => {
-          if (_copyResetTimer) clearTimeout(_copyResetTimer);
+          if (panelState.copyResetTimer) clearTimeout(panelState.copyResetTimer);
           copyBtn.textContent = 'Copied!';
-          // Store timer ID so a rapid second review can cancel this before mutating a stale button (#3).
-          _copyResetTimer = setTimeout(() => { copyBtn.textContent = 'Copy'; _copyResetTimer = null; }, 2000);
+          panelState.copyResetTimer = setTimeout(() => { copyBtn.textContent = 'Copy'; panelState.copyResetTimer = null; }, 2000);
         })
         .catch((err: unknown) => {
-          // Surface failure rather than swallowing it (#1 from review).
           console.error('PRPilot: clipboard write failed', err);
-          if (_copyResetTimer) clearTimeout(_copyResetTimer);
+          if (panelState.copyResetTimer) clearTimeout(panelState.copyResetTimer);
           copyBtn.textContent = 'Failed';
-          _copyResetTimer = setTimeout(() => { copyBtn.textContent = 'Copy'; _copyResetTimer = null; }, 2000);
+          panelState.copyResetTimer = setTimeout(() => { copyBtn.textContent = 'Copy'; panelState.copyResetTimer = null; }, 2000);
         });
     });
   }

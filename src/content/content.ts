@@ -4,7 +4,12 @@ import { fetchPRDiff } from '../github/diffExtractor';
 import { injectReviewButton, showLoadingPanel, addLoadingStep, showReviewPanel, showErrorPanel, showSetupPanel } from './ui';
 import { DEFAULT_SETTINGS, ReviewResult } from '../types';
 
+/** Prevents concurrent reviews if the button is clicked while one is in progress. */
+let reviewing = false;
+
 async function handleReviewClick(): Promise<void> {
+  if (reviewing) return;
+
   const settings = await getSettings();
 
   // No API key → show inline setup instead of a dead-end error
@@ -17,11 +22,13 @@ async function handleReviewClick(): Promise<void> {
     return;
   }
 
+  reviewing = true;
   showLoadingPanel();
 
   const prInfo = parsePRUrl(window.location.href);
   if (!prInfo) {
     showErrorPanel('Could not detect a pull request on this page. Navigate to a GitHub PR and try again.');
+    reviewing = false;
     return;
   }
 
@@ -41,20 +48,24 @@ async function handleReviewClick(): Promise<void> {
     addLoadingStep(`Fetched ${files.length} changed file${files.length !== 1 ? 's' : ''}`);
     addLoadingStep(`Sending to ${settings.apiProvider === 'anthropic' ? 'Claude' : 'GPT'} for review…`);
 
-    // Send diff to background service worker for the API call.
-    // The SW runs outside the page context so GitHub's CSP doesn't block it.
+    // Send only the diff and non-sensitive options to the background service worker.
+    // The SW reads the API key directly from chrome.storage — it never travels over the message bus.
     const response = await chrome.runtime.sendMessage({
       type: 'REVIEW_PR',
       files,
-      settings,
-    }) as { ok: boolean; result?: ReviewResult; error?: string };
+      options: {
+        reviewStyle:          settings.reviewStyle,
+        maxFilesPerReview:    settings.maxFilesPerReview,
+        maxPatchCharsPerFile: settings.maxPatchCharsPerFile,
+      },
+    }) as { ok: boolean; status: number; result?: ReviewResult; error?: string };
 
     addLoadingStep('Response received — parsing review…');
 
     if (!response.ok) {
       const msg = response.error ?? 'Background worker returned an error.';
-      // 401 means the saved key is wrong — re-show setup so they can fix it
-      if (msg.includes('401')) {
+      // Use the structured status code returned by the background worker — never string-match on error text.
+      if (response.status === 401) {
         showSetupPanel(async (apiKey: string, provider: string) => {
           const model = provider === 'anthropic' ? DEFAULT_SETTINGS.model : 'gpt-4o';
           await saveSettings({ ...settings, apiKey, apiProvider: provider as 'anthropic' | 'openai', model });
@@ -69,6 +80,8 @@ async function handleReviewClick(): Promise<void> {
   } catch (err) {
     const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
     showErrorPanel(message);
+  } finally {
+    reviewing = false;
   }
 }
 
