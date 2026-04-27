@@ -40,8 +40,11 @@ async function callAnthropic(prompt: string, settings: Settings): Promise<string
   });
 
   if (!response.ok) {
+    // Include response body in error for easier debugging
+    let detail = '';
+    try { detail = JSON.stringify(await response.json()); } catch { /* ignore */ }
     throw new Error(
-      `Anthropic API error: ${response.status} ${response.statusText}`
+      `Anthropic API error: ${response.status} ${response.statusText}${detail ? ` — ${detail}` : ''}`
     );
   }
 

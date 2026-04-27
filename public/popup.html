@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PRPilot Settings</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 340px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      color: #24292e;
+      background: #fff;
+    }
+    .header {
+      background: #0366d6;
+      color: #fff;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header h1 { font-size: 16px; font-weight: 600; }
+    .header span { font-size: 18px; }
+    .body { padding: 16px; }
+    .field { margin-bottom: 14px; }
+    label { display: block; font-weight: 600; margin-bottom: 5px; color: #24292e; }
+    .hint { font-size: 11px; color: #586069; margin-top: 3px; }
+    input, select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #d1d5da;
+      border-radius: 5px;
+      font-size: 13px;
+      color: #24292e;
+      background: #fff;
+    }
+    input:focus, select:focus { outline: none; border-color: #0366d6; box-shadow: 0 0 0 2px rgba(3,102,214,0.2); }
+    .btn-row { display: flex; gap: 8px; margin-top: 16px; }
+    button {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #save-btn { background: #0366d6; color: #fff; }
+    #save-btn:hover { background: #0255b3; }
+    #clear-btn { background: #f6f8fa; color: #586069; border: 1px solid #d1d5da; }
+    #clear-btn:hover { background: #e1e4e8; }
+    .status {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      display: none;
+    }
+    .status.success { background: #dcffe4; color: #28a745; display: block; }
+    .status.error { background: #ffeef0; color: #d73a49; display: block; }
+    .divider { border: none; border-top: 1px solid #e1e4e8; margin: 12px 0; }
+    .footer { padding: 8px 16px 12px; text-align: center; }
+    .footer a { font-size: 11px; color: #586069; text-decoration: none; }
+    .footer a:hover { color: #0366d6; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span>🤖</span>
+    <h1>PRPilot</h1>
+  </div>
+
+  <div class="body">
+    <div class="field">
+      <label for="provider">AI Provider</label>
+      <select id="provider">
+        <option value="anthropic">Anthropic (Claude)</option>
+        <option value="openai">OpenAI (GPT)</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="api-key">API Key</label>
+      <input type="password" id="api-key" placeholder="sk-ant-… or sk-…" autocomplete="off" />
+      <p class="hint">Your key is stored locally and never leaves your browser.</p>
+    </div>
+
+    <div class="field">
+      <label for="model">Model</label>
+      <select id="model"></select>
+    </div>
+
+    <div class="field">
+      <label for="review-style">Review Style</label>
+      <select id="review-style">
+        <option value="general">General (balanced)</option>
+        <option value="security">Security focused</option>
+        <option value="performance">Performance focused</option>
+        <option value="concise">Concise (high severity only)</option>
+      </select>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="field">
+      <label for="github-token">GitHub Token <span style="font-weight:400;color:#586069;">(optional)</span></label>
+      <input type="password" id="github-token" placeholder="ghp_…" autocomplete="off" />
+      <p class="hint">Required only for private repositories.</p>
+    </div>
+
+    <div class="btn-row">
+      <button id="save-btn">Save Settings</button>
+      <button id="clear-btn">Clear</button>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="footer">
+    <a href="https://github.com/ethbarr/prpilot" target="_blank">github.com/ethbarr/prpilot</a>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

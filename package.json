@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "description": "AI-powered GitHub PR reviewer Chrome extension",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "vite build --watch",
-    "build": "vite build",
+    "dev": "node build.mjs --watch",
+    "build": "node build.mjs",
     "test": "jest",
     "test:coverage": "jest --coverage"
   },
